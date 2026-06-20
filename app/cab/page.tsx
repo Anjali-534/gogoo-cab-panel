@@ -29,12 +29,12 @@ function authHeaders() {
 
 function isCabBooking(b: BookingType) {
   return b.service_type?.category === 'cab' ||
-    CAB_TYPES.includes(b.vehicle_type) ||
-    CAB_TYPES.includes(b.service_type?.vehicle_type);
+    CAB_TYPES.includes(b.vehicle_type || '') ||
+    CAB_TYPES.includes(b.service_type?.vehicle_type || '');
 }
 
 function isCabDriver(d: DriverType) {
-  return CAB_TYPES.includes(d.vehicle_type);
+  return CAB_TYPES.includes(d.vehicle_type || '');
 }
 
 interface BookingType {
