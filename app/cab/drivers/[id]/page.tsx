@@ -115,11 +115,8 @@ export default function DriverDetailPage() {
 
       setDriver(dData.data || dData);
       setDocs(docsData.docs || []);
-      const allBookings: Booking[] = Array.isArray(bData) ? bData : bData.bookings || [];
-      setBookings(allBookings.filter(b =>
-        CAB_TYPES.includes((b as any).vehicle_type || '') ||
-        CAB_TYPES.includes((b as any).service_type?.vehicle_type || '')
-      ));
+      const allBookings: Booking[] = Array.isArray(bData) ? bData : (bData?.bookings || []);
+      setBookings(allBookings);
     } catch {
       // silent
     } finally {
@@ -162,10 +159,7 @@ export default function DriverDetailPage() {
       const res = await fetch(`${API}/gogoo/drivers/${id}/bookings`, { headers: authHeaders() });
       const data = await res.json();
       const all: Booking[] = Array.isArray(data) ? data : (data?.bookings || []);
-      setBookings(all.filter(b =>
-        CAB_TYPES.includes((b as any).vehicle_type || '') ||
-        CAB_TYPES.includes((b as any).service_type?.vehicle_type || '')
-      ));
+      setBookings(all);
     } catch { toast.error('Failed to refresh rides'); }
     finally { setRidesLoading(false); }
   }, [id]);
@@ -468,7 +462,7 @@ export default function DriverDetailPage() {
           ) : filteredRides.length === 0 ? (
             <div className="p-10 text-center text-gray-400">
               <p className="text-3xl mb-2">🏁</p>
-              <p className="text-sm">No {rideTab.toLowerCase()} rides found</p>
+              <p className="text-sm">{rideTab === 'All' ? 'No rides found' : `No ${rideTab.toLowerCase()} rides found`}</p>
             </div>
           ) : (
             <table className="w-full">
