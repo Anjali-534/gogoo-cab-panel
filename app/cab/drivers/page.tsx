@@ -51,11 +51,16 @@ export default function DriversPage() {
   const fetchDrivers = useCallback(async () => {
     try {
       const res = await fetch(`${API}/gogoo/drivers`, { headers: authHeaders() });
+      if (!res.ok) {
+        console.error('Drivers API error:', res.status, await res.text());
+        setLoading(false);
+        return;
+      }
       const data = await res.json();
-      const all: Driver[] = Array.isArray(data) ? data : data.data || data.drivers || [];
+      const all: Driver[] = Array.isArray(data) ? data : (data?.drivers || data?.data || []);
       setDrivers(all.filter(d => CAB_TYPES.includes(d.vehicle_type || '')));
-    } catch {
-      // silent
+    } catch (e) {
+      console.error('Failed to fetch drivers:', e);
     } finally {
       setLoading(false);
     }
