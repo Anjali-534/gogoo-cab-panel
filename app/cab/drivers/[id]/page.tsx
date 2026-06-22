@@ -99,6 +99,8 @@ export default function DriverDetailPage() {
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [previewDoc, setPreviewDoc] = useState<Doc | null>(null);
+  const [rideTab, setRideTab] = useState('All');
+  const [ridesLoading, setRidesLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -154,6 +156,20 @@ export default function DriverDetailPage() {
     } catch { toast.error('Failed to verify driver'); }
   }
 
+  const refreshBookings = useCallback(async () => {
+    setRidesLoading(true);
+    try {
+      const res = await fetch(`${API}/gogoo/drivers/${id}/bookings`, { headers: authHeaders() });
+      const data = await res.json();
+      const all: Booking[] = Array.isArray(data) ? data : (data?.bookings || []);
+      setBookings(all.filter(b =>
+        CAB_TYPES.includes((b as any).vehicle_type || '') ||
+        CAB_TYPES.includes((b as any).service_type?.vehicle_type || '')
+      ));
+    } catch { toast.error('Failed to refresh rides'); }
+    finally { setRidesLoading(false); }
+  }, [id]);
+
   async function reviewDoc(docType: string, status: string) {
     if (status === 'rejected' && !rejectReason.trim()) {
       toast.error('Please enter a rejection reason');
@@ -199,6 +215,8 @@ export default function DriverDetailPage() {
   const rating = driver.rating || 0;
   const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(rating));
   const approvedDocs = docs.filter(d => d.status === 'approved').length;
+  const filteredRides = rideTab === 'All' ? bookings
+    : bookings.filter(r => r.status === rideTab.toLowerCase().replace(' ', '_'));
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -414,36 +432,74 @@ export default function DriverDetailPage() {
 
       {/* Cab Ride History */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800">Cab Ride History ({bookings.length})</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {completedRides.length} completed · ₹{totalEarnings.toLocaleString('en-IN')} earned
-          </p>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Cab Ride History</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {completedRides.length} completed · ₹{totalEarnings.toLocaleString('en-IN')} earned
+            </p>
+          </div>
+          <button onClick={refreshBookings} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition">
+            <RefreshCw size={14} />
+          </button>
         </div>
-        {bookings.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 text-sm">No cab rides found</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+
+        {/* Status filter tabs */}
+        <div className="px-6 py-4 border-b border-gray-100 flex gap-2 flex-wrap">
+          {['All', 'Completed', 'Cancelled', 'In Progress'].map(t => {
+            const cnt = t === 'All' ? bookings.length
+              : bookings.filter(r => r.status === t.toLowerCase().replace(' ', '_')).length;
+            return (
+              <button key={t} onClick={() => setRideTab(t)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  rideTab === t
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                }`}>
+                {t} <span className="ml-1 opacity-70">{cnt}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="overflow-x-auto">
+          {ridesLoading ? (
+            <div className="p-10 text-center text-gray-400">Loading rides…</div>
+          ) : filteredRides.length === 0 ? (
+            <div className="p-10 text-center text-gray-400">
+              <p className="text-3xl mb-2">🏁</p>
+              <p className="text-sm">No {rideTab.toLowerCase()} rides found</p>
+            </div>
+          ) : (
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {['Rider', 'Route', 'Distance', 'Fare', 'Status', 'Date'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {['Date', 'Rider', 'Route', 'Service', 'Distance', 'Fare', 'Status'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-[11px] font-bold text-gray-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {bookings.slice(0, 50).map(b => (
-                  <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-700">{b.rider_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs max-w-36">
-                      <p className="truncate">{b.pickup_address?.slice(0, 24) || '—'}</p>
-                      <p className="text-gray-400">→ {b.drop_address?.slice(0, 24) || '—'}</p>
+                {filteredRides.slice(0, 50).map((b: any) => (
+                  <tr key={b.id} className="hover:bg-gray-50 transition">
+                    <td className="px-5 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {b.created_at ? new Date(b.created_at).toLocaleString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      }) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{b.distance_km ? `${b.distance_km}km` : '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-800">₹{(b.final_fare || b.estimated_fare || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full font-medium capitalize"
+                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{b.rider_name || '—'}</td>
+                    <td className="px-5 py-3 max-w-[180px]">
+                      <p className="text-xs text-gray-600 truncate">● {b.pickup_address || '—'}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">● {b.drop_address || '—'}</p>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-gray-500">{b.service_name || (b as any).service_type?.name || '—'}</td>
+                    <td className="px-5 py-3 text-xs text-gray-700 text-right">{Number(b.distance_km || 0).toFixed(1)} km</td>
+                    <td className="px-5 py-3 text-sm font-bold text-gray-900 text-right">
+                      ₹{Math.round(b.final_fare || b.estimated_fare || 0)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="text-[11px] font-bold px-2 py-1 rounded-full capitalize"
                         style={{
                           backgroundColor: `${STATUS_COLORS[b.status || ''] || '#6B7280'}20`,
                           color: STATUS_COLORS[b.status || ''] || '#6B7280',
@@ -451,15 +507,12 @@ export default function DriverDetailPage() {
                         {b.status?.replace('_', ' ') || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      {b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN') : '—'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Document Preview Modal */}
