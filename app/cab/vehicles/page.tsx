@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://gogobackend-production.up.railway.app';
 const VEHICLE_TYPES = [
   { key: 'cab_2w', label: '2 Wheeler', emoji: '🛵', color: '#FFCBA4' },
   { key: 'cab_3w', label: 'Auto', emoji: '🛺', color: '#FF9A5C' },
@@ -34,7 +34,7 @@ interface Booking {
 interface Driver {
   id: string;
   vehicle_type?: string;
-  online?: boolean;
+  is_online?: boolean;
   status?: string;
   name?: string;
   rating?: number;
@@ -82,7 +82,7 @@ export default function VehiclesPage() {
     const completed = allVtB.filter(b => b.status === 'completed');
     const todayCompleted = todayVtB.filter(b => b.status === 'completed');
     const cancelled = allVtB.filter(b => b.status === 'cancelled');
-    const onlineDrivers = drivers.filter(d => d.vehicle_type === vt.key && (d.online || d.status === 'online'));
+    const onlineDrivers = drivers.filter(d => d.vehicle_type === vt.key && d.is_online);
     const topDriver = drivers.filter(d => d.vehicle_type === vt.key).sort((a, b) => (b.rides_today || 0) - (a.rides_today || 0))[0];
     const avgFare = completed.length ? Math.round(completed.reduce((s, b) => s + (b.final_fare || b.estimated_fare || 0), 0) / completed.length) : 0;
     const avgDist = completed.length ? (completed.reduce((s, b) => s + (b.distance_km || 0), 0) / completed.length).toFixed(1) : '0';

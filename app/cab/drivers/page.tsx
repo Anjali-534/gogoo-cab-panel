@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, ShieldOff, Bell } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://gogobackend-production.up.railway.app';
 const CAB_TYPES = ['cab_2w', 'cab_3w', 'cab_4w', 'cab_4w_suv'];
 const VEHICLE_LABELS: Record<string, string> = {
   cab_2w: '2 Wheeler', cab_3w: 'Auto', cab_4w: 'Mini/Sedan', cab_4w_suv: 'Prime SUV',
@@ -34,9 +34,9 @@ interface Driver {
   earnings_today?: number;
   wallet_balance?: number;
   status?: string;
-  online?: boolean;
+  is_online?: boolean;
   is_blocked?: boolean;
-  docs_verified?: boolean;
+  is_verified?: boolean;
   profile_photo?: string;
 }
 
@@ -89,10 +89,10 @@ export default function DriversPage() {
 
   const stats = {
     total: drivers.length,
-    online: drivers.filter(d => d.online || d.status === 'online').length,
-    offline: drivers.filter(d => !d.online && d.status !== 'online' && !d.is_blocked).length,
+    online: drivers.filter(d => d.is_online).length,
+    offline: drivers.filter(d => !d.is_online && !d.is_blocked).length,
     blocked: drivers.filter(d => d.is_blocked).length,
-    pendingDocs: drivers.filter(d => !d.docs_verified).length,
+    pendingDocs: drivers.filter(d => !d.is_verified).length,
   };
 
   const TABS = [
@@ -209,7 +209,7 @@ export default function DriversPage() {
                         <span className="flex items-center gap-1 text-xs text-red-600">
                           <span className="w-2 h-2 bg-red-500 rounded-full" /> Blocked
                         </span>
-                      ) : d.online || d.status === 'online' ? (
+                      ) : d.is_online ? (
                         <span className="flex items-center gap-1 text-xs text-green-600">
                           <span className="w-2 h-2 bg-green-500 rounded-full" /> Online
                         </span>
@@ -221,9 +221,9 @@ export default function DriversPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        d.docs_verified ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'
+                        d.is_verified ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'
                       }`}>
-                        {d.docs_verified ? 'Verified' : 'Pending'}
+                        {d.is_verified ? 'Verified' : 'Pending'}
                       </span>
                     </td>
                     <td className="px-4 py-3">

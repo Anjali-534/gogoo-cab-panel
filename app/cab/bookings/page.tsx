@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { X, Phone, XCircle } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://gogobackend-production.up.railway.app';
 const CAB_TYPES = ['cab_2w', 'cab_3w', 'cab_4w', 'cab_4w_suv'];
 const VEHICLE_LABELS: Record<string, string> = {
   cab_2w: '2W', cab_3w: 'Auto', cab_4w: 'Mini', cab_4w_suv: 'SUV',
@@ -28,24 +28,32 @@ function authHeaders() {
 interface Booking {
   id: string;
   service_type?: { category?: string; vehicle_type?: string };
+  service_category?: string;
   vehicle_type?: string;
   status?: string;
   estimated_fare?: number;
   final_fare?: number;
   created_at?: string;
   rider?: { name?: string; phone?: string };
+  rider_name?: string;
+  rider_phone?: string;
   driver?: { name?: string; phone?: string; vehicle_number?: string };
+  driver_name?: string;
+  driver_phone?: string;
+  vehicle_number?: string;
   pickup_address?: string;
   drop_address?: string;
   distance_km?: number;
   otp?: string;
+  ride_otp?: string;
   otp_verified?: boolean;
   trip_type?: string;
   rental_package?: string;
 }
 
 function isCabBooking(b: Booking) {
-  return b.service_type?.category === 'cab' ||
+  return b.service_category === 'cab' ||
+    b.service_type?.category === 'cab' ||
     CAB_TYPES.includes(b.vehicle_type || '') ||
     CAB_TYPES.includes(b.service_type?.vehicle_type || '');
 }
@@ -101,8 +109,8 @@ export default function BookingsPage() {
       const q = search.toLowerCase();
       return (
         b.id?.toLowerCase().includes(q) ||
-        b.rider?.name?.toLowerCase().includes(q) ||
-        b.driver?.name?.toLowerCase().includes(q)
+        (b.rider_name || b.rider?.name)?.toLowerCase().includes(q) ||
+        (b.driver_name || b.driver?.name)?.toLowerCase().includes(q)
       );
     }
     return true;
@@ -213,12 +221,12 @@ export default function BookingsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{b.rider?.name || '—'}</p>
-                      <p className="text-xs text-gray-400">{b.rider?.phone || ''}</p>
+                      <p className="font-medium text-gray-800">{b.rider_name || b.rider?.name || '—'}</p>
+                      <p className="text-xs text-gray-400">{b.rider_phone || b.rider?.phone || ''}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{b.driver?.name || 'Unassigned'}</p>
-                      <p className="text-xs text-gray-400">{b.driver?.vehicle_number || ''}</p>
+                      <p className="font-medium text-gray-800">{b.driver_name || b.driver?.name || 'Unassigned'}</p>
+                      <p className="text-xs text-gray-400">{b.vehicle_number || b.driver?.vehicle_number || ''}</p>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs max-w-32">
                       <p className="truncate">{b.pickup_address?.slice(0, 20) || '—'}</p>
@@ -299,23 +307,23 @@ export default function BookingsPage() {
               </div>
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs text-gray-400 mb-2">Rider</p>
-                <p className="font-medium">{selected.rider?.name || '—'}</p>
-                {selected.rider?.phone && (
-                  <a href={`tel:${selected.rider.phone}`} className="flex items-center gap-1 text-xs text-orange-500 mt-1">
-                    <Phone size={12} /> {selected.rider.phone}
+                <p className="font-medium">{selected.rider_name || selected.rider?.name || '—'}</p>
+                {(selected.rider_phone || selected.rider?.phone) && (
+                  <a href={`tel:${selected.rider_phone || selected.rider?.phone}`} className="flex items-center gap-1 text-xs text-orange-500 mt-1">
+                    <Phone size={12} /> {selected.rider_phone || selected.rider?.phone}
                   </a>
                 )}
               </div>
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs text-gray-400 mb-2">Driver</p>
-                <p className="font-medium">{selected.driver?.name || 'Unassigned'}</p>
-                {selected.driver?.phone && (
-                  <a href={`tel:${selected.driver.phone}`} className="flex items-center gap-1 text-xs text-orange-500 mt-1">
-                    <Phone size={12} /> {selected.driver.phone}
+                <p className="font-medium">{selected.driver_name || selected.driver?.name || 'Unassigned'}</p>
+                {(selected.driver_phone || selected.driver?.phone) && (
+                  <a href={`tel:${selected.driver_phone || selected.driver?.phone}`} className="flex items-center gap-1 text-xs text-orange-500 mt-1">
+                    <Phone size={12} /> {selected.driver_phone || selected.driver?.phone}
                   </a>
                 )}
-                {selected.driver?.vehicle_number && (
-                  <p className="text-xs text-gray-500 mt-1">{selected.driver.vehicle_number}</p>
+                {(selected.vehicle_number || selected.driver?.vehicle_number) && (
+                  <p className="text-xs text-gray-500 mt-1">{selected.vehicle_number || selected.driver?.vehicle_number}</p>
                 )}
               </div>
               <div className="border-t border-gray-100 pt-4">
@@ -347,7 +355,7 @@ export default function BookingsPage() {
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs text-gray-400 mb-2">OTP</p>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-lg">{selected.otp || '—'}</span>
+                  <span className="font-mono font-bold text-lg">{selected.ride_otp || selected.otp || '—'}</span>
                   <span className="text-xs">
                     {selected.otp_verified ? '✅ Verified' : '⏳ Pending'}
                   </span>

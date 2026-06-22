@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 import { useEffect, useState, useCallback } from 'react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://gogobackend-production.up.railway.app';
 const CAB_TYPES = ['cab_2w', 'cab_3w', 'cab_4w', 'cab_4w_suv'];
 const VEHICLE_LABELS: Record<string, string> = {
   cab_2w: '2 Wheeler', cab_3w: 'Auto', cab_4w: 'Mini/Sedan', cab_4w_suv: 'Prime SUV',
@@ -28,7 +28,8 @@ function authHeaders() {
 }
 
 function isCabBooking(b: BookingType) {
-  return b.service_type?.category === 'cab' ||
+  return b.service_category === 'cab' ||
+    b.service_type?.category === 'cab' ||
     CAB_TYPES.includes(b.vehicle_type || '') ||
     CAB_TYPES.includes(b.service_type?.vehicle_type || '');
 }
@@ -40,15 +41,23 @@ function isCabDriver(d: DriverType) {
 interface BookingType {
   id: string;
   service_type?: { category?: string; vehicle_type?: string };
+  service_category?: string;
   vehicle_type?: string;
   status?: string;
   estimated_fare?: number;
   final_fare?: number;
   created_at?: string;
   rider?: { name?: string; phone?: string };
+  rider_name?: string;
+  rider_phone?: string;
   driver?: { name?: string; phone?: string; vehicle_number?: string };
+  driver_name?: string;
+  driver_phone?: string;
+  vehicle_number?: string;
   pickup_address?: string;
   drop_address?: string;
+  distance_km?: number;
+  ride_otp?: string;
 }
 
 interface DriverType {
@@ -57,11 +66,13 @@ interface DriverType {
   name?: string;
   phone?: string;
   status?: string;
-  online?: boolean;
+  is_online?: boolean;
   is_blocked?: boolean;
+  is_verified?: boolean;
   rides_today?: number;
   total_rides?: number;
   earnings_today?: number;
+  wallet_balance?: number;
   rating?: number;
   vehicle_number?: string;
 }
@@ -116,7 +127,7 @@ export default function CabOverviewPage() {
   const cancelled = todayBookings.filter(b => b.status === 'cancelled');
   const inProgress = todayBookings.filter(b => b.status === 'in_progress' || b.status === 'accepted');
   const revenue = completed.reduce((s, b) => s + (b.final_fare || b.estimated_fare || 0), 0);
-  const onlineDrivers = drivers.filter(d => d.online || d.status === 'online');
+  const onlineDrivers = drivers.filter(d => d.is_online);
 
   // Vehicle type breakdown
   const vehicleBreakdown = CAB_TYPES.map(vt => ({
@@ -394,10 +405,10 @@ export default function CabOverviewPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`w-2 h-2 rounded-full inline-block mr-1.5 ${
-                        d.online || d.status === 'online' ? 'bg-green-500' : 'bg-gray-400'
+                        d.is_online ? 'bg-green-500' : 'bg-gray-400'
                       }`} />
                       <span className="text-xs text-gray-600">
-                        {d.is_blocked ? 'Blocked' : (d.online || d.status === 'online') ? 'Online' : 'Offline'}
+                        {d.is_blocked ? 'Blocked' : d.is_online ? 'Online' : 'Offline'}
                       </span>
                     </td>
                   </tr>
