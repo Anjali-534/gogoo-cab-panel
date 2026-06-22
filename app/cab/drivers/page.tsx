@@ -37,6 +37,7 @@ interface Driver {
   is_online?: boolean;
   is_blocked?: boolean;
   is_verified?: boolean;
+  documents_status?: string;
   profile_photo?: string;
 }
 
@@ -63,15 +64,32 @@ export default function DriversPage() {
   useEffect(() => { fetchDrivers(); }, [fetchDrivers]);
 
   async function toggleBlock(driver: Driver) {
-    const endpoint = driver.is_blocked ? 'unblock' : 'block';
     try {
-      await fetch(`${API}/gogoo/drivers/${driver.id}/${endpoint}`, {
-        method: 'POST', headers: authHeaders(),
+      await fetch(`${API}/gogoo/drivers/${driver.id}/block`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({ action: driver.is_blocked ? 'unblock' : 'block' }),
       });
       fetchDrivers();
     } catch {
       // silent
     }
+  }
+
+  async function verifyDriver(driverId: string) {
+    try {
+      await fetch(`${API}/gogoo/drivers/${driverId}/verify`, {
+        method: 'PATCH', headers: authHeaders(),
+      });
+      fetchDrivers();
+    } catch {
+      // silent
+    }
+  }
+
+  function exportExcel() {
+    const token = getToken();
+    window.open(`${API}/gogoo/export/drivers.xlsx?token=${token}`, '_blank');
   }
 
   const filtered = drivers.filter(d => {
@@ -154,7 +172,11 @@ export default function DriversPage() {
               {tab.label}
             </button>
           ))}
-          <div className="flex-1 flex items-center justify-end px-4">
+          <div className="flex-1 flex items-center justify-end gap-2 px-4">
+            <button onClick={exportExcel}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition">
+              📥 Export Excel
+            </button>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -220,10 +242,13 @@ export default function DriversPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        d.is_verified ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600'
-                      }`}>
-                        {d.is_verified ? 'Verified' : 'Pending'}
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${({
+                        verified: 'bg-green-50 text-green-600',
+                        pending:  'bg-yellow-50 text-yellow-600',
+                        rejected: 'bg-red-50 text-red-600',
+                        incomplete: 'bg-gray-50 text-gray-500',
+                      } as any)[(d as any).documents_status] || 'bg-gray-50 text-gray-500'}`}>
+                        {(d as any).documents_status || 'incomplete'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -232,6 +257,12 @@ export default function DriversPage() {
                           className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-500 transition-colors" title="View Profile">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </Link>
+                        {!d.is_verified && !d.is_blocked && (
+                          <button onClick={() => verifyDriver(d.id)}
+                            className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors" title="Verify Driver">
+                            ✓
+                          </button>
+                        )}
                         <button onClick={() => toggleBlock(d)}
                           className={`p-1.5 rounded-lg transition-colors ${d.is_blocked ? 'hover:bg-green-50 text-green-600' : 'hover:bg-red-50 text-red-500'}`}
                           title={d.is_blocked ? 'Unblock' : 'Block'}>
