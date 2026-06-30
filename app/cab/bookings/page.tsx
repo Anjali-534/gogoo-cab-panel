@@ -75,6 +75,29 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('today');
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const cancelBooking = async (bookingId: string) => {
+    if (!confirm('Cancel this booking?')) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`${API}/gogoo/bookings/${bookingId}/status`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', cancelled_by: 'admin' }),
+      });
+      if (res.ok) {
+        setSelected(null);
+        fetchBookings();
+      } else {
+        alert('Failed to cancel booking');
+      }
+    } catch {
+      alert('Failed to cancel booking');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -363,9 +386,13 @@ export default function BookingsPage() {
               </div>
               {selected.status !== 'cancelled' && selected.status !== 'completed' && (
                 <div className="border-t border-gray-100 pt-4">
-                  <button className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors">
+                  <button
+                    onClick={() => cancelBooking(selected.id)}
+                    disabled={cancelling}
+                    className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-60"
+                  >
                     <XCircle size={16} />
-                    Cancel Booking
+                    {cancelling ? 'Cancelling...' : 'Cancel Booking'}
                   </button>
                 </div>
               )}
